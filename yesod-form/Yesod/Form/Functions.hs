@@ -306,21 +306,22 @@ runFormGeneric :: Monad m
                -> m (a, Enctype)
 runFormGeneric form site langs env = evalRWST form (env, site, langs) (IntSingle 0)
 
-type GMForm m a = forall site. RWST (Maybe (Env, FileEnv), site, [Lang]) Enctype Ints m a
+type GMForm site m a = RWST (Maybe (Env, FileEnv), site, [Lang]) Enctype Ints m a
 
-runGFormPostNoToken :: Monad m => [Text] -> (Html -> GMForm m a) -> m (a, Enctype)
-runGFormPostNoToken langs0 form = do
+runGFormPostNoToken :: Monad m => [Text] -> (Html -> GMForm site m a) -> site -> m (a, Enctype)
+runGFormPostNoToken langs0 form site = do
     langs <- pure langs0
     env <- pure mempty
-    runGFormGeneric (form mempty) langs env
+    runGFormGeneric (form mempty) langs site  env
 
 runGFormGeneric ::
      (Monad m)
-  => GMForm m a
+  => GMForm site m a
   -> [Text]
+  -> site
   -> Maybe (Env, FileEnv)
   -> m (a, Enctype)
-runGFormGeneric form langs env = evalRWST form (env, (), langs) (IntSingle 0)
+runGFormGeneric form langs site  env = evalRWST form (env, site, langs) (IntSingle 0)
 
 -- | This function is used to both initially render a form and to later extract
 -- results from it. Note that, due to CSRF protection and a few other issues,
