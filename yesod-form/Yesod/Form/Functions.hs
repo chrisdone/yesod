@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -27,6 +28,8 @@ module Yesod.Form.Functions
     , areqMsg
     , aopt
       -- * Run a form
+    , runGFormPostNoToken
+    , GMForm
     , runFormPost
     , runFormPostNoToken
     , runFormGet
@@ -63,7 +66,7 @@ import Data.Text (Text, pack)
 import qualified Data.Text as T
 import Control.Arrow (second)
 import Control.Monad.Trans.Class
-import Control.Monad.Trans.RWS (ask, get, put, runRWST, tell, evalRWST, local, mapRWST)
+import Control.Monad.Trans.RWS (RWST, ask, get, put, runRWST, tell, evalRWST, local, mapRWST)
 import Control.Monad.Trans.Writer (runWriterT, writer)
 import Control.Monad (liftM, join)
 import Data.Byteable (constEqBytes)
@@ -302,6 +305,22 @@ runFormGeneric :: Monad m
                -> Maybe (Env, FileEnv)
                -> m (a, Enctype)
 runFormGeneric form site langs env = evalRWST form (env, site, langs) (IntSingle 0)
+
+type GMForm m a = forall site. RWST (Maybe (Env, FileEnv), site, [Lang]) Enctype Ints m a
+
+runGFormPostNoToken :: Monad m => [Text] -> (Html -> GMForm m a) -> m (a, Enctype)
+runGFormPostNoToken langs0 form = do
+    langs <- pure langs0
+    env <- pure mempty
+    runGFormGeneric (form mempty) langs env
+
+runGFormGeneric ::
+     (Monad m)
+  => GMForm m a
+  -> [Text]
+  -> Maybe (Env, FileEnv)
+  -> m (a, Enctype)
+runGFormGeneric form langs env = evalRWST form (env, (), langs) (IntSingle 0)
 
 -- | This function is used to both initially render a form and to later extract
 -- results from it. Note that, due to CSRF protection and a few other issues,
